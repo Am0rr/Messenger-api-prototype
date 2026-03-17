@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:16-alpine 
+    container_name: messenger_db
+    restart: always 
+    
+    environment:
+      POSTGRES_USER: Top
+      POSTGRES_PASSWORD: 12345
+      POSTGRES_DB: MessengerDb
+    
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
