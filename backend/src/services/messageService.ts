@@ -1,12 +1,16 @@
 import {v4 as uuidv4 } from 'uuid';
 import {Message} from '../models/types';
 import {pool} from '../storage/db';
-import {validateNotEmpty} from '../validators/inputValidator';
+import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
 
 export const sendMessage = async(conversationId: string, senderId: string, text: string): Promise<Message> => {
     validateNotEmpty(text, 'Message text');
+
     validateNotEmpty(conversationId, 'Conversation ID');
+    validateUUID(conversationId, 'COnversation ID');
+
     validateNotEmpty(senderId, 'Sender ID');
+    validateUUID(senderId, 'Sender ID');
 
     const userResult = await pool.query('SELECT id FROM users WHERE id = $1', [senderId]);
         if(userResult.rowCount === 0) throw new Error('User does not exist');
@@ -33,6 +37,7 @@ export const sendMessage = async(conversationId: string, senderId: string, text:
 
 export const getMessage = async (conversationId: string): Promise<Message[]> => {
     validateNotEmpty(conversationId, 'Conversation ID');
+    validateUUID(conversationId, 'Conversation ID')
 
     const result = await pool.query(
         'SELECT * FROM messages WHERE "conversationId" = $1 ORDER BY "createdAt" ASC',
