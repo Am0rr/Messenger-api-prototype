@@ -20,14 +20,14 @@ export const initDB = async() => {
                 name VARCHAR(255) NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS converstions (
+            CREATE TABLE IF NOT EXISTS conversations (
                 id UUID PRIMARY KEY,
                 type VARCHAR(50) NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS messages (
                 id UUID PRIMARY KEY,
-                "converationId" UUID REFERENCES conversations(id),
+                "conversationId" UUID REFERENCES conversations(id),
                 "senderId" UUID REFERENCES users(id),
                 text TEXT NOT NULL,
                 "createdAt" BIGINT NOT NULL
