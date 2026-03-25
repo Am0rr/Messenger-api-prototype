@@ -27,8 +27,19 @@ export const initDB = async() => {
 
             CREATE TABLE IF NOT EXISTS messages (
                 id UUID PRIMARY KEY,
+                status VARCHAR(50) DEFAULT 'sent',
                 "conversationId" UUID REFERENCES conversations(id),
                 "senderId" UUID REFERENCES users(id),
+                text TEXT NOT NULL,
+                "createdAt" BIGINT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS reports (
+                id UUID PRIMARY KEY,
+                status VARCHAR(50) DEFAULT 'unsolved',
+                "conversationId" UUID REFERENCES conversations(id),
+                "senderId" UUID REFERENCES users(id),
+                "messageId" UUID REFERENCES messages(id),
                 text TEXT NOT NULL,
                 "createdAt" BIGINT NOT NULL
             );

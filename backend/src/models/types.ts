@@ -13,5 +13,16 @@ export interface Message {
     conversationId: string;
     senderId: string;
     text: string;
+    status: 'sent' | 'delivered' | 'read' | 'reported' | 'hidden' | 'verified';
+    createdAt: number;
+}
+
+export interface Report {
+    id: string;
+    status: 'solved' | 'solving' | 'unsolved';
+    text: string;
+    conversationId: string;
+    messageId: string;
+    senderId: string;
     createdAt: number;
 }
