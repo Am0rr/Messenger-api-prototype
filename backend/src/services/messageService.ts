@@ -3,7 +3,7 @@ import {Message} from '../models/types';
 import {pool} from '../storage/db';
 import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
 
-export const sendMessage = async(conversationId: string, senderId: string, text: string): Promise<Message> => {
+export const sendMessage = async(conversationId: string, senderId: string, text: string, status: 'sent' | 'delivered' | 'read' | 'reported' | 'hidden' | 'verified' = 'sent'): Promise<Message> => {
     validateNotEmpty(text, 'Message text');
 
     validateNotEmpty(conversationId, 'Conversation ID');
@@ -20,6 +20,7 @@ export const sendMessage = async(conversationId: string, senderId: string, text:
 
     const message: Message = {
         id: uuidv4(),
+        status,
         conversationId,
         senderId,
         text,
@@ -27,9 +28,9 @@ export const sendMessage = async(conversationId: string, senderId: string, text:
     };
 
     await pool.query(
-        `INSERT INTO messages (id, "conversationId", "senderId", text, "createdAt")
-        VALUES ($1, $2, $3, $4, $5)`,
-        [message.id, message.conversationId, message.senderId, message.text, message.createdAt]
+        `INSERT INTO messages (id, status, "conversationId", "senderId", text, "createdAt")
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [message.id, message.status, message.conversationId, message.senderId, message.text, message.createdAt]
     );
 
     return message;
@@ -44,5 +45,12 @@ export const getMessage = async (conversationId: string): Promise<Message[]> => 
         [conversationId]
     );
 
-    return result.rows as Message[];
+    const messages = result.rows.map(row => {
+        if(row.status === 'hidden') {
+            return { ...row, text: '*** This message was hidden by a moderator ***'};
+        }
+        return row;
+    });
+
+    return messages as Message[];
 };
