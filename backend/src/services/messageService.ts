@@ -41,7 +41,7 @@ export const getMessage = async (conversationId: string): Promise<Message[]> => 
     validateUUID(conversationId, 'Conversation ID')
 
     const result = await pool.query(
-        'SELECT * FROM messages WHERE "conversationId" = $1 ORDER BY "createdAt" ASC',
+        `SELECT * FROM messages WHERE "conversationId" = $1 ORDER BY "createdAt" ASC`,
         [conversationId]
     );
 
