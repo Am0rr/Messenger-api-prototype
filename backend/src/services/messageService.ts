@@ -36,7 +36,7 @@ export const sendMessage = async(conversationId: string, senderId: string, text:
     return message;
 };
 
-export const getMessage = async (conversationId: string): Promise<Message[]> => {
+export const getMessages = async (conversationId: string): Promise<Message[]> => {
     validateNotEmpty(conversationId, 'Conversation ID');
     validateUUID(conversationId, 'Conversation ID')
 

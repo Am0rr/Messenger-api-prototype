@@ -1,7 +1,7 @@
 import {Router, Request, Response} from 'express';
 import {asyncHandler} from '../utils/asyncHandler';
 import {sendMessage} from '../services/messageService';
-import {getMessage} from '../services/messageService';
+import {getMessages} from '../services/messageService';
 
 export const messageRouter = Router();
 
@@ -13,6 +13,6 @@ messageRouter.post('/', asyncHandler(async(req: Request, res: Response) => {
 
 messageRouter.get('/:conversationId', asyncHandler(async (req: Request, res: Response) => {
     const {conversationId} = req.params;
-    const messagez = await getMessage(conversationId as string);
-    res.status(200).json(messagez);
+    const messages = await getMessages(conversationId as string);
+    res.status(200).json(messages);
 }));
