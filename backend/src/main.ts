@@ -3,6 +3,7 @@ import { initDB } from './storage/db';
 import { userRouter } from './api/userRoutes';
 import { conversationRouter } from './api/conversationRoutes';
 import { messageRouter } from './api/messageRoutes';
+import { reportRouter } from './api/reportRoutes';
 
 const app = express();
 const PORT = 3000;
@@ -12,6 +13,7 @@ app.use(express.json());
 app.use('/api/users', userRouter);
 app.use('/api/conversations', conversationRouter);
 app.use('/api/messages', messageRouter);
+app.use('/api/reports', reportRouter);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error('[Error]: ', err.message);
