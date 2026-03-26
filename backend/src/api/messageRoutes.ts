@@ -6,8 +6,8 @@ import {getMessage} from '../services/messageService';
 export const messageRouter = Router();
 
 messageRouter.post('/', asyncHandler(async(req: Request, res: Response) => {
-    const {conversationId, senderId, text} = req.body;
-    const message = await sendMessage(conversationId, senderId, text);
+    const {conversationId, senderId, text, status} = req.body;
+    const message = await sendMessage(conversationId, senderId, text, status);
     res.status(201).json(message);
 }));
 
