@@ -2,12 +2,13 @@ import {v4 as uuidv4 } from 'uuid';
 import {Message} from '../models/types';
 import {pool} from '../storage/db';
 import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
+import { sendToQueue, MESSAGE_QUEUE } from '../storage/rabbitmq';
 
 export const sendMessage = async(conversationId: string, senderId: string, text: string, status: 'sent' | 'delivered' | 'read' | 'reported' | 'hidden' | 'verified' = 'sent'): Promise<Message> => {
     validateNotEmpty(text, 'Message text');
 
     validateNotEmpty(conversationId, 'Conversation ID');
-    validateUUID(conversationId, 'COnversation ID');
+    validateUUID(conversationId, 'Conversation ID');
 
     validateNotEmpty(senderId, 'Sender ID');
     validateUUID(senderId, 'Sender ID');
@@ -32,6 +33,13 @@ export const sendMessage = async(conversationId: string, senderId: string, text:
         VALUES ($1, $2, $3, $4, $5, $6)`,
         [message.id, message.status, message.conversationId, message.senderId, message.text, message.createdAt]
     );
+
+    sendToQueue(MESSAGE_QUEUE, {
+        event: 'MESSAGE_SENT', 
+        messageId: message.id,
+        conversationId: conversationId,
+        timestamp: Date.now()
+    });
 
     return message;
 };
