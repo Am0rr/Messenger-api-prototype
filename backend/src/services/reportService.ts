@@ -2,6 +2,7 @@ import {v4 as uuidv4 } from 'uuid';
 import {Report} from '../models/types';
 import {pool} from '../storage/db';
 import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
+import { sendToQueue, REPORT_QUEUE } from '../storage/rabbitmq';
 
 export const createReport = async(messageId: string, conversationId: string, senderId: string, text: string, status: 'solved' | 'solving' | 'unsolved'): Promise<string> => {
     validateNotEmpty(text, 'Message text');
@@ -51,6 +52,13 @@ export const createReport = async(messageId: string, conversationId: string, sen
         );
 
         await client.query('COMMIT');
+
+        sendToQueue(REPORT_QUEUE, {
+            event: 'REPORT_CREATED', 
+            reportId: report.id,
+            messageId: messageId,
+            timestamp: Date.now()
+        });
 
         return 'Your report was created successfully.';
     } catch(error) {
