@@ -52,7 +52,24 @@ export const startMessageConsumer = async () => {
             } catch {
                 channel.nack(msg, false, true);
             }
-        }
-    })
-}
+        };
+    });
+};
+
+export const startReportConsumer = async() => {
+    if(!channel) return;
+
+    channel.consume(REPORT_QUEUE, async(report) => {
+        if(report !== null) {
+            try {
+                const data = JSON.parse(report.content.toString());
+                const {reportId} = data;
+
+                channel.ack(report);
+            } catch {
+                channel.nack(report, false, true);
+            }
+        };
+    });
+};
 

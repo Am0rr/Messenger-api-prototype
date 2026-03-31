@@ -4,7 +4,7 @@ import { userRouter } from './api/userRoutes';
 import { conversationRouter } from './api/conversationRoutes';
 import { messageRouter } from './api/messageRoutes';
 import { reportRouter } from './api/reportRoutes';
-import { connectRabbitMQ, startMessageConsumer } from './storage/rabbitmq';
+import { connectRabbitMQ, startMessageConsumer, startReportConsumer } from './storage/rabbitmq';
 
 const app = express();
 const PORT = 3000;
@@ -28,6 +28,7 @@ const bootstrap = async () => {
     await initDB();
     await connectRabbitMQ();
     await startMessageConsumer();
+    await startReportConsumer();
     
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on http://localhost:${PORT}`);
