@@ -1,5 +1,6 @@
 import amqp from 'amqplib';
 import dotenv from 'dotenv';
+import {pool} from '../storage/db';
 
 dotenv.config();
 
@@ -32,4 +33,26 @@ export const sendToQueue = (queueName: string, data: any) => {
         persistent: true
     });
 };
+
+export const startMessageConsumer = async () => {
+    if(!channel) return;
+
+    channel.consume(MESSAGE_QUEUE, async(msg) => {
+        if(msg !== null) {
+            try {
+                const data = JSON.parse(msg.content.toString());
+                const {messageId} = data;
+
+                await pool.query(
+                    `UPDATE messages SET status = $1 WHERE id = $2`,
+                    ['delivered', messageId]
+                );
+
+                channel.ack(msg);
+            } catch {
+                channel.nack(msg, false, true);
+            }
+        }
+    })
+}
 
