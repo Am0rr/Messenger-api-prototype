@@ -1,4 +1,4 @@
-import {v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import {Message} from '../models/types';
 import {pool} from '../storage/db';
 import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
@@ -20,7 +20,7 @@ export const sendMessage = async(conversationId: string, senderId: string, text:
         if(conversationResult.rowCount === 0) throw new Error('Conversation does not exist');
 
     const message: Message = {
-        id: uuidv4(),
+        id: randomUUID(),
         status,
         conversationId,
         senderId,

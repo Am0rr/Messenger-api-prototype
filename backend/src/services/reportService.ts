@@ -1,4 +1,4 @@
-import {v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import {Report} from '../models/types';
 import {pool} from '../storage/db';
 import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
@@ -31,7 +31,7 @@ export const createReport = async(messageId: string, conversationId: string, sen
             if(conversationResult.rowCount === 0) throw new Error('Conversation does not exist');
 
         const report: Report = {
-            id: uuidv4(),
+            id: randomUUID(),
             status,
             messageId,
             conversationId,
