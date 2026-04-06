@@ -37,7 +37,7 @@ describe('Report Service', () => {
 
             await expect(
                 createReport(invalidMessageId, conversationId, senderId, 'text', 'unsolved')
-            ).rejects.toThrow(`Inalid UUID format`);
+            ).rejects.toThrow(`Invalid UUID format`);
         });
 
         it('should create a report, update message status, and send to RabbitMQ on success', async() => {
