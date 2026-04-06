@@ -1,6 +1,6 @@
 import {Router, Request, Response} from 'express';
 import {asyncHandler} from '../utils/asyncHandler';
-import {sendMessage} from '../services/messageService';
+import {deleteMessage, sendMessage} from '../services/messageService';
 import {getMessages} from '../services/messageService';
 
 export const messageRouter = Router();
@@ -15,4 +15,14 @@ messageRouter.get('/:conversationId', asyncHandler(async (req: Request, res: Res
     const {conversationId} = req.params;
     const messages = await getMessages(conversationId as string);
     res.status(200).json(messages);
+}));
+
+messageRouter.delete('/:messageId', asyncHandler(async (req: Request, res: Response) => {
+    const {messageId} = req.params;
+    const {senderId} = req.body;
+    await deleteMessage(messageId as string, senderId as string)
+    res.status(200).json({
+        success: true,
+        message: "Message deleted."
+    });
 }));

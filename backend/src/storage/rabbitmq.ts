@@ -40,13 +40,23 @@ export const startMessageConsumer = async () => {
     channel.consume(MESSAGE_QUEUE, async(msg) => {
         if(msg !== null) {
             try {
-                const data = JSON.parse(msg.content.toString());
-                const {messageId} = data;
+                const payload = JSON.parse(msg.content.toString());
+                const eventType = payload.event || 'MESSAGE_SENT';
+                
+                switch(eventType)
+                {
+                    case 'MESSAGE_SENT':
+                        await pool.query(
+                            `UPDATE messages SET status = $1 WHERE id = $2`,
+                            ['delivered', payload.messageId]
+                        );
+                        break;
 
-                await pool.query(
-                    `UPDATE messages SET status = $1 WHERE id = $2`,
-                    ['delivered', messageId]
-                );
+                    case 'MESSAGE_DELETED':
+                        break;
+                    default:
+                        throw new Error(`Unknown event: ${eventType}`)
+                }
 
                 channel.ack(msg);
             } catch {

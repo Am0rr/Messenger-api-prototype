@@ -34,7 +34,7 @@ export const sendMessage = async(conversationId: string, senderId: string, text:
         [message.id, message.status, message.conversationId, message.senderId, message.text, message.createdAt]
     );
 
-    sendToQueue(MESSAGE_QUEUE, {
+    await sendToQueue(MESSAGE_QUEUE, {
         event: 'MESSAGE_SENT', 
         messageId: message.id,
         conversationId: conversationId,
@@ -61,4 +61,32 @@ export const getMessages = async (conversationId: string): Promise<Message[]> =>
     });
 
     return messages as Message[];
+};
+
+export const deleteMessage = async(messageId: string, senderId: string) => {
+    validateNotEmpty(messageId, "Message ID");
+    validateUUID(messageId, "Message ID");
+
+    validateNotEmpty(senderId, "Sender ID");
+    validateUUID(senderId, "Sender ID");
+
+    const result = await pool.query(
+        `DELETE FROM messages WHERE id = $1 AND "senderId" = $2 RETURNING "conversationId"`,
+        [messageId, senderId]
+    );
+
+    if(result.rowCount === 0)
+        throw new Error("Message not found or access denied.");
+
+    const conversationId = result.rows[0].conversationId;
+
+    await sendToQueue(MESSAGE_QUEUE, {
+        event: 'MESSAGE_DELETED',
+        data: {
+            messageId,
+            conversationId,
+            deletedBy: senderId,
+            timeStamp: Date.now()
+        }
+    });
 };
