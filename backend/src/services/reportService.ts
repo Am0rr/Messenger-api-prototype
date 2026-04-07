@@ -1,20 +1,9 @@
 import { randomUUID } from 'crypto';
 import {Report} from '../models/types';
 import {pool} from '../storage/db';
-import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
 import { sendToQueue, REPORT_QUEUE } from '../storage/rabbitmq';
 
 export const createReport = async(messageId: string, conversationId: string, senderId: string, text: string, status: 'solved' | 'solving' | 'unsolved' = 'unsolved'): Promise<string> => {
-    validateNotEmpty(text, 'Message text');
-
-    validateNotEmpty(messageId, 'Message ID');
-    validateUUID(messageId, 'Message ID');
-
-    validateNotEmpty(conversationId, 'Conversation ID');
-    validateUUID(conversationId, 'Conversation ID');
-
-    validateNotEmpty(senderId, 'Sender ID');
-    validateUUID(senderId, 'Sender ID');
 
     const client = await pool.connect();
 
@@ -70,7 +59,6 @@ export const createReport = async(messageId: string, conversationId: string, sen
 }
 
 export const getReports = async(status: 'solved' | 'solving' | 'unsolved' = 'unsolved'): Promise<Report[]> => {
-    validateNotEmpty(status, 'Status');
 
     const result = await pool.query(
         `SELECT * FROM reports WHERE status = $1 ORDER BY "createdAt" ASC`,
@@ -81,8 +69,6 @@ export const getReports = async(status: 'solved' | 'solving' | 'unsolved' = 'uns
 }
 
 export const takeReportInWork = async(reportId: string): Promise<string> => {
-    validateNotEmpty(reportId, "Report ID");
-    validateUUID(reportId, "Report ID");
 
     const reportResult = await pool.query(`SELECT id FROM reports WHERE id = $1`, [reportId]);
         if(reportResult.rowCount === 0) throw new Error('Report does not exist');
@@ -96,8 +82,6 @@ export const takeReportInWork = async(reportId: string): Promise<string> => {
 }
 
 export const resolveAndHideMessage = async(reportId: string): Promise<string> => {
-    validateNotEmpty(reportId, "Report ID");
-    validateUUID(reportId, "Report ID");
 
     const client = await pool.connect();
 
@@ -134,8 +118,6 @@ export const resolveAndHideMessage = async(reportId: string): Promise<string> =>
 }
 
 export const rejectReport = async(reportId: string): Promise<string> => {
-    validateNotEmpty(reportId, "Report ID");
-    validateUUID(reportId, "Report ID");
 
         const client = await pool.connect();
 
