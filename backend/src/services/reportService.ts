@@ -4,7 +4,7 @@ import {pool} from '../storage/db';
 import {validateNotEmpty, validateUUID} from '../validators/inputValidator';
 import { sendToQueue, REPORT_QUEUE } from '../storage/rabbitmq';
 
-export const createReport = async(messageId: string, conversationId: string, senderId: string, text: string, status: 'solved' | 'solving' | 'unsolved'): Promise<string> => {
+export const createReport = async(messageId: string, conversationId: string, senderId: string, text: string, status: 'solved' | 'solving' | 'unsolved' = 'unsolved'): Promise<string> => {
     validateNotEmpty(text, 'Message text');
 
     validateNotEmpty(messageId, 'Message ID');
