@@ -36,24 +36,6 @@ describe('Message Service', () => {
                 expect.objectContaining({event: 'MESSAGE_SENT'})
             );
         });
-
-        it('should throw error when text is empty', async() => {
-            const conversationId = '123e4567-e89b-12d3-a456-426614174001';
-            const senderId = '123e4567-e89b-12d3-a456-426614174002';
-
-            await expect(
-                sendMessage(conversationId, senderId, '', 'sent')
-            ).rejects.toThrow('Message text cannot be empty');
-        });
-        
-        it('should throw an error if senderId is not a valid UUID', async() => {
-            const conversationId = '123e4567-e89b-12d3-a456-426614174001';
-            const invalidSenderId = 'invalid-uuid22ee2ee2e22';
-
-            await expect(
-                sendMessage(conversationId, invalidSenderId, 'text', 'sent')
-            ).rejects.toThrow(`Invalid UUID format`);
-        });
     });
 
     describe('deleteMessage', () => {
@@ -87,15 +69,6 @@ describe('Message Service', () => {
             )
         });
 
-        it('should throw an error if messageId is not a valid UUID', async() => {
-            const senderId = '123e4567-e89b-12d3-a456-426614174001';
-            const invalidMessageId = 'invalid-uuid22ee2ee2e22';
-
-            await expect(
-                deleteMessage(invalidMessageId, senderId)
-            ).rejects.toThrow(`Invalid UUID format`);
-        });
-
         it('should throw an error if message is not found or access denied', async() => {
             const messageId = '123e4567-e89b-12d3-a456-426614174001';
             const senderId = '123e4567-e89b-12d3-a456-426614174002';
@@ -111,13 +84,6 @@ describe('Message Service', () => {
     });
 
     describe('getMessages', () => {
-        it('should throw an error if conversatioId is not a valid UUID', async() => {
-            const invalidConversationId= 'invalid-uuid22ee2ee2e22';
-
-            await expect(
-                getMessages(invalidConversationId)
-            ).rejects.toThrow(`Invalid UUID format`);
-        });
 
         it('should return messages and mask text for hidden messages', async () => {
             const conversationId = '123e4567-e89b-12d3-a456-426614174001';

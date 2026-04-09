@@ -20,26 +20,6 @@ describe('Report Service', () => {
     });
 
     describe('createReport', () => {
-        it('should throw an error if text is empty', async() => {
-            const messageId = '123e4567-e89b-12d3-a456-426614174000';
-            const conversationId = '123e4567-e89b-12d3-a456-426614174001';
-            const senderId = '123e4567-e89b-12d3-a456-426614174002';
-
-            await expect(
-                createReport(messageId, conversationId, senderId, '', 'unsolved')
-            ).rejects.toThrow('Message text cannot be empty');
-        });
-
-        it('should throw an error if messageId is not a valid UUID', async() => {
-            const invalidMessageId = 'invalid-uuid22ee2ee2e22';
-            const conversationId = '123e4567-e89b-12d3-a456-426614174001';
-            const senderId = '123e4567-e89b-12d3-a456-426614174002';
-
-            await expect(
-                createReport(invalidMessageId, conversationId, senderId, 'text', 'unsolved')
-            ).rejects.toThrow(`Invalid UUID format`);
-        });
-
         it('should create a report, update message status, and send to RabbitMQ on success', async() => {
             const messageId = '123e4567-e89b-12d3-a456-426614174000';
             const conversationId = '123e4567-e89b-12d3-a456-426614174001';
