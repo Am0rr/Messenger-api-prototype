@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto';
 import {Conversation} from '../models/types';
 import {pool} from '../storage/db';
-import {validateNotEmpty} from '../validators/inputValidator';
 
 export const createConversation = async (type: 'direct' | 'group' = 'direct'): Promise<Conversation> => {
     const id = randomUUID();
