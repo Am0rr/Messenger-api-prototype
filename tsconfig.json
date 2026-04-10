@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "es2022",                                
     "module": "commonjs",                                
-    "rootDir": "./",                                 
+    "rootDir": "./backend//src",    
+    "outDir": "./backend/dist",                             
     "esModuleInterop": true,                             
     "forceConsistentCasingInFileNames": true,            
     "strict": true,                                    
@@ -10,6 +11,9 @@
   },
   "include": [
     "backend/src/**/*",
-    "backend/tests/**/*"
+  ],
+    "exclude": [
+    "node_modules", 
+    "**/*.test.ts", 
   ]
 }
