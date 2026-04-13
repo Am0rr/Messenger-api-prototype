@@ -1,154 +1,79 @@
 import { randomUUID } from 'crypto';
 import {Report} from '../models/types';
-import {pool} from '../storage/db';
 import { sendToQueue, REPORT_QUEUE } from '../storage/rabbitmq';
+import {
+    checkMessageExists,
+    checkUserExists,
+    checkConversationExists,
+    selectReportsByStatus,
+    checkReportExists,
+    updateReportStatus,
+    createReportTransaction,
+    resolveAndHideTransaction,
+    rejectReportTransaction,
+} from '../repositories/reportRepository'
 
 export const createReport = async(messageId: string, conversationId: string, senderId: string, text: string, status: 'solved' | 'solving' | 'unsolved' = 'unsolved'): Promise<string> => {
 
-    const client = await pool.connect();
+    const messageExists = await checkMessageExists(messageId);
+    if(!messageExists) throw new Error('Message does not exist');
 
-    try {
-        await client.query('BEGIN');
+    const userExists = await checkUserExists(senderId);
+    if(!userExists) throw new Error('User does not exist');
 
-        const messageResult = await client.query('SELECT id FROM messages WHERE id = $1', [messageId]);
-            if(messageResult.rowCount === 0) throw new Error('Message does not exist');
+    const conversationExists = await checkConversationExists(conversationId);
+    if(!conversationExists) throw new Error('Conversation does not exist');
 
-        const userResult = await client.query('SELECT id FROM users WHERE id = $1', [senderId]);
-            if(userResult.rowCount === 0) throw new Error('User does not exist');
+    const report: Report = {
+        id: randomUUID(),
+        status,
+        messageId,
+        conversationId,
+        senderId,
+        text,
+        createdAt: Date.now(),
+    };
 
-        const conversationResult = await client.query('SELECT id FROM conversations WHERE id = $1', [conversationId]);
-            if(conversationResult.rowCount === 0) throw new Error('Conversation does not exist');
+    await createReportTransaction(report);
 
-        const report: Report = {
-            id: randomUUID(),
-            status,
-            messageId,
-            conversationId,
-            senderId,
-            text,
-            createdAt: Date.now(),
-        };
+    await sendToQueue(REPORT_QUEUE, {
+        event: 'REPORT_CREATED', 
+        reportId: report.id,
+        messageId: messageId,
+        timestamp: Date.now()
+    });
 
-        await client.query(
-        `INSERT INTO reports (id, status, "messageId", "conversationId", "senderId", text, "createdAt")
-        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [report.id, report.status, report.messageId, report.conversationId, report.senderId, report.text, report.createdAt]
-        );
-
-        await client.query(
-            `UPDATE messages SET status = 'reported' WHERE id = $1`,
-            [messageId]
-        );
-
-        await client.query('COMMIT');
-
-        sendToQueue(REPORT_QUEUE, {
-            event: 'REPORT_CREATED', 
-            reportId: report.id,
-            messageId: messageId,
-            timestamp: Date.now()
-        });
-
-        return 'Your report was created successfully.';
-    } catch(error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
-}
+    return 'Your report was created successfully.';
+};
 
 export const getReports = async(status: 'solved' | 'solving' | 'unsolved' = 'unsolved'): Promise<Report[]> => {
-
-    const result = await pool.query(
-        `SELECT * FROM reports WHERE status = $1 ORDER BY "createdAt" ASC`,
-        [status]
-    );
-
-    return result.rows as Report[];
-}
+    return selectReportsByStatus(status);
+};
 
 export const takeReportInWork = async(reportId: string): Promise<string> => {
 
-    const reportResult = await pool.query(`SELECT id FROM reports WHERE id = $1`, [reportId]);
-        if(reportResult.rowCount === 0) throw new Error('Report does not exist');
+    const reportExists = await checkReportExists(reportId);
+    if(!reportExists) throw new Error('Report does not exist');
 
-    await pool.query(
-        `UPDATE reports SET status = 'solving' WHERE id = $1`,
-        [reportId]
-    )
+    await updateReportStatus(reportId);
 
     return `Report ${reportId} was marked as 'solving'.`
-}
+};
 
 export const resolveAndHideMessage = async(reportId: string): Promise<string> => {
+    const reportExists = await checkReportExists(reportId);
+    if(!reportExists) throw new Error('Report does not exist');
+    
+    await resolveAndHideTransaction(reportId);
 
-    const client = await pool.connect();
-
-    try{
-        await client.query('BEGIN');
-
-        const reportResult = await client.query(`SELECT "messageId" FROM reports WHERE id = $1`,
-            [reportId]
-        );
-
-        if(reportResult.rowCount === 0 ) throw new Error('Report does not exist');
-
-        const messageId = reportResult.rows[0].messageId;
-
-        await client.query(
-            `UPDATE messages SET status = 'hidden' WHERE id = $1`,
-            [messageId]
-        )
-
-        await client.query(
-            `UPDATE reports SET status = 'solved' WHERE id = $1`,
-            [reportId]
-        )
-
-        await client.query('COMMIT');
-
-        return `Report ${reportId} was solved and the message was hidden.`;
-    }catch(error){
-        await client.query('ROLLBACK');
-        throw error;
-    } finally{
-        client.release();
-    }
-}
+    return `Report ${reportId} was solved and the message was hidden.`;
+};
 
 export const rejectReport = async(reportId: string): Promise<string> => {
+    const reportExists = await checkReportExists(reportId);
+    if(!reportExists) throw new Error('Report does not exist');
 
-        const client = await pool.connect();
+    await rejectReportTransaction(reportId);
 
-    try{
-        await client.query('BEGIN');
-
-        const reportResult = await client.query(`SELECT "messageId" FROM reports WHERE id = $1`,
-            [reportId]
-        );
-
-        if(reportResult.rowCount === 0 ) throw new Error('Report does not exist');
-
-        const messageId = reportResult.rows[0].messageId;
-
-        await client.query(
-            `UPDATE messages SET status = 'verified' WHERE id = $1`,
-            [messageId]
-        )
-
-        await client.query(
-            `UPDATE reports SET status = 'solved' WHERE id = $1`,
-            [reportId]
-        )
-
-        await client.query('COMMIT');
-
-        return `Report ${reportId} was solved and the message was verified.`;
-    }catch(error){
-        await client.query('ROLLBACK');
-        throw error;
-    } finally{
-        client.release();
-    }
-}
+    return `Report ${reportId} was solved and the message was verified.`;
+};
