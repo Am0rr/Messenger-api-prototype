@@ -1,3 +1,4 @@
+import { ConversationType } from '../../src/models/types';
 import { createConversation } from '../../src/services/conversationService';
 import { pool } from '../../src/storage/db';
 
@@ -14,16 +15,17 @@ describe('Conversation Service', () => {
 
     describe('createConversation', () => {
         it('should successfully create conversation', async() => {
+            const status = ConversationType.DIRECT;
             (pool.query as jest.Mock).mockResolvedValue({rowCount: 1});
 
-            await expect(createConversation('direct')).resolves.toMatchObject({
+            await expect(createConversation(status)).resolves.toMatchObject({
                 id: expect.any(String),
                 type: 'direct'
             });
 
             expect(pool.query).toHaveBeenCalledWith(
                 expect.stringContaining(`INSERT INTO conversations`),
-                [expect.any(String), 'direct']
+                [expect.any(String), status]
             );
         });
     });

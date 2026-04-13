@@ -3,6 +3,7 @@ import {asyncHandler} from '../utils/asyncHandler';
 import {createReport, getReports, takeReportInWork, resolveAndHideMessage, rejectReport} from '../services/reportService';
 import {validate} from '../utils/validate';
 import { CreateReportSchema, GetReportsSchema, RejectReportSchema, ResolveAndHideMessageSchema, TakeReportInWorkSchema } from '../validators/schemas';
+import { ReportStatus } from '../models/types';
 
 export const reportRouter = Router();
 
@@ -14,7 +15,7 @@ reportRouter.post('/', validate(CreateReportSchema), asyncHandler(async(req: Req
 
 reportRouter.get('/', validate(GetReportsSchema), asyncHandler(async(req: Request, res: Response) => {
     const {status} = req.query;
-    const typedStatus = status as 'solved' | 'solving' | 'unsolved' | undefined;
+    const typedStatus = status as ReportStatus | undefined;
     const reports = await getReports(typedStatus);
     res.status(200).json(reports);
 }));

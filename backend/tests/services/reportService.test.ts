@@ -1,6 +1,7 @@
 import { createReport, takeReportInWork, resolveAndHideMessage, rejectReport } from '../../src/services/reportService';
 import * as reportRepository from '../../src/repositories/reportRepository';
 import { REPORT_QUEUE, sendToQueue } from '../../src/storage/rabbitmq';
+import { ReportStatus } from '../../src/models/types';
 
 jest.mock('../../src/repositories/reportRepository');
 
@@ -19,7 +20,7 @@ describe('Report Service', () => {
         const conversationId = '123e4567-e89b-12d3-a456-426614174001';
         const senderId = '123e4567-e89b-12d3-a456-426614174002';
         const text = 'Spam content';
-        const status = 'unsolved';
+        const status = ReportStatus.UNSOLVED;
 
         it('should create a report, update message status, and send to RabbitMQ on success', async() => {
             (reportRepository.checkMessageExists as jest.Mock).mockResolvedValue(true);
@@ -59,7 +60,7 @@ describe('Report Service', () => {
             (reportRepository.createReportTransaction as jest.Mock).mockRejectedValue(new Error('Database explosion!'));
 
             await expect(
-                createReport(messageId, conversationId, senderId, 'Spam', 'unsolved')
+                createReport(messageId, conversationId, senderId, 'Spam', status)
             ).rejects.toThrow('Database explosion!');
 
             expect(sendToQueue).not.toHaveBeenCalled();

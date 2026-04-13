@@ -1,3 +1,23 @@
+export enum ConversationType {
+    DIRECT = 'direct',
+    GROUP = 'group'
+}
+
+export enum MessageStatus {
+    SENT = 'sent',
+    DELIVERED = 'delivered',
+    READ = 'read',
+    REPORTED = 'reported',
+    HIDDEN = 'hidden',
+    VERIFIED = 'verified'
+}
+
+export enum ReportStatus {
+    SOLVED = 'solved',
+    SOLVING = 'solving',
+    UNSOLVED = 'unsolved'
+}
+
 export interface User {
     id: string;
     name: string;
@@ -5,7 +25,7 @@ export interface User {
 
 export interface Conversation {
     id: string;
-    type: 'direct' | 'group';
+    type: ConversationType;
 }
 
 export interface Message {
@@ -13,13 +33,13 @@ export interface Message {
     conversationId: string;
     senderId: string;
     text: string;
-    status: 'sent' | 'delivered' | 'read' | 'reported' | 'hidden' | 'verified';
+    status: MessageStatus;
     createdAt: number;
 }
 
 export interface Report {
     id: string;
-    status: 'solved' | 'solving' | 'unsolved';
+    status: ReportStatus;
     text: string;
     conversationId: string;
     messageId: string;

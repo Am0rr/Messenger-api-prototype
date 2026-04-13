@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
-import {Message} from '../models/types';
+import {Message, MessageStatus} from '../models/types';
 import { sendToQueue, MESSAGE_QUEUE } from '../storage/rabbitmq';
-import { checkConversationExists, checkUserExists, deleteMessageFRomDB, insertMessageIntoDB, selectMessagesByConversationId } from '../repositories/messageRepository';
+import { checkConversationExists, checkUserExists, deleteMessageFromDB, insertMessageIntoDB, selectMessagesByConversationId } from '../repositories/messageRepository';
 
-export const sendMessage = async(conversationId: string, senderId: string, text: string, status: 'sent' | 'delivered' | 'read' | 'reported' | 'hidden' | 'verified' = 'sent'): Promise<Message> => {
+export const sendMessage = async(conversationId: string, senderId: string, text: string, status: MessageStatus = MessageStatus.SENT): Promise<Message> => {
 
     const userExists = await checkUserExists(senderId);
     if(!userExists) throw new Error('User does not exist');
@@ -37,7 +37,7 @@ export const getMessages = async (conversationId: string): Promise<Message[]> =>
     const rows = await selectMessagesByConversationId(conversationId);
 
     const messages = rows.map(row => {
-        if(row.status === 'hidden') {
+        if(row.status === MessageStatus.HIDDEN) {
             return { ...row, text: '*** This message was hidden by a moderator ***'};
         }
         return row;
@@ -48,7 +48,7 @@ export const getMessages = async (conversationId: string): Promise<Message[]> =>
 
 export const deleteMessage = async(messageId: string, senderId: string) => {
 
-    const conversationId = await deleteMessageFRomDB(messageId, senderId);
+    const conversationId = await deleteMessageFromDB(messageId, senderId);
 
     if(!conversationId)
         throw new Error("Message not found or access denied.");

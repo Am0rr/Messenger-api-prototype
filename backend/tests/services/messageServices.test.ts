@@ -1,3 +1,4 @@
+import { MessageStatus } from '../../src/models/types';
 import { sendMessage, deleteMessage, getMessages } from '../../src/services/messageService';
 import { pool } from '../../src/storage/db';
 import { MESSAGE_QUEUE, sendToQueue } from '../../src/storage/rabbitmq';
@@ -25,7 +26,7 @@ describe('Message Service', () => {
             const conversationId = '123e4567-e89b-12d3-a456-426614174001';
             const senderId = '123e4567-e89b-12d3-a456-426614174002';
 
-            const message = await sendMessage(conversationId, senderId, 'text', 'sent');
+            const message = await sendMessage(conversationId, senderId, 'text', MessageStatus.SENT);
 
             expect(message).toBeDefined();
             expect(message.text).toBe('text');

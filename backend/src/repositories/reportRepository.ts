@@ -1,5 +1,5 @@
 import {pool} from '../storage/db';
-import { Report } from '../../src/models/types';
+import { Report, ReportStatus } from '../../src/models/types';
 
 export const checkMessageExists = async(messageId: string): Promise<boolean> => {
     const result = await pool.query('SELECT id FROM messages WHERE id = $1', [messageId]);
@@ -43,7 +43,7 @@ export const createReportTransaction = async(report: Report): Promise<void> => {
     };
 };
 
-export const selectReportsByStatus = async(status: string): Promise<Report[]> => {
+export const selectReportsByStatus = async(status: ReportStatus): Promise<Report[]> => {
     const result = await pool.query(
         `SELECT * FROM reports WHERE status = $1 ORDER BY "createdAt" ASC`,
         [status]

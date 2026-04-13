@@ -27,7 +27,7 @@ export const selectMessagesByConversationId = async(conversationId: string): Pro
     return result.rows as Message[];
 };
 
-export const deleteMessageFRomDB = async(messageId: string, senderId: string): Promise<string | null> => {
+export const deleteMessageFromDB = async(messageId: string, senderId: string): Promise<string | null> => {
     const result = await pool.query(
         `DELETE FROM messages WHERE id = $1 AND "senderId" = $2 RETURNING "conversationId"`,
         [messageId, senderId]

@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import {Report} from '../models/types';
+import {Report, ReportStatus} from '../models/types';
 import { sendToQueue, REPORT_QUEUE } from '../storage/rabbitmq';
 import {
     checkMessageExists,
@@ -13,7 +13,7 @@ import {
     rejectReportTransaction,
 } from '../repositories/reportRepository'
 
-export const createReport = async(messageId: string, conversationId: string, senderId: string, text: string, status: 'solved' | 'solving' | 'unsolved' = 'unsolved'): Promise<string> => {
+export const createReport = async(messageId: string, conversationId: string, senderId: string, text: string, status: ReportStatus = ReportStatus.UNSOLVED): Promise<string> => {
 
     const messageExists = await checkMessageExists(messageId);
     if(!messageExists) throw new Error('Message does not exist');
@@ -46,7 +46,7 @@ export const createReport = async(messageId: string, conversationId: string, sen
     return 'Your report was created successfully.';
 };
 
-export const getReports = async(status: 'solved' | 'solving' | 'unsolved' = 'unsolved'): Promise<Report[]> => {
+export const getReports = async(status: ReportStatus = ReportStatus.UNSOLVED): Promise<Report[]> => {
     return selectReportsByStatus(status);
 };
 
