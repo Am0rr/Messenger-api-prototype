@@ -5,11 +5,11 @@ import { checkConversationExists, checkUserExists, deleteMessageFRomDB, insertMe
 
 export const sendMessage = async(conversationId: string, senderId: string, text: string, status: 'sent' | 'delivered' | 'read' | 'reported' | 'hidden' | 'verified' = 'sent'): Promise<Message> => {
 
-        const userExists = await checkUserExists(senderId);
-        if(!userExists) throw new Error('User does not exist');
+    const userExists = await checkUserExists(senderId);
+    if(!userExists) throw new Error('User does not exist');
 
-        const conversationExists = await checkConversationExists(conversationId);
-        if(!conversationExists) throw new Error('Conversation does not exist');
+    const conversationExists = await checkConversationExists(conversationId);
+    if(!conversationExists) throw new Error('Conversation does not exist');
 
     const message: Message = {
         id: randomUUID(),

@@ -1,6 +1,5 @@
 import {pool} from '../storage/db';
 import { Message } from '../../src/models/types';
-import { NullSchema } from 'zod/v4/core/json-schema.cjs';
 
 export const checkUserExists = async(senderId: string): Promise<boolean> => {
     const result = await pool.query('SELECT id FROM users WHERE id = $1', [senderId]);
