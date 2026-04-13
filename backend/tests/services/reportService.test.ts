@@ -1,13 +1,8 @@
 import { createReport, takeReportInWork, resolveAndHideMessage, rejectReport } from '../../src/services/reportService';
-import { pool } from '../../src/storage/db';
+import * as reportRepository from '../../src/repositories/reportRepository';
 import { REPORT_QUEUE, sendToQueue } from '../../src/storage/rabbitmq';
 
-jest.mock('../../src/storage/db', () => ({
-    pool: {
-        connect: jest.fn(),
-        query: jest.fn(),
-    },
-}));
+jest.mock('../../src/repositories/reportRepository');
 
 jest.mock('../../src/storage/rabbitmq', () => ({
     sendToQueue: jest.fn(),
@@ -20,37 +15,30 @@ describe('Report Service', () => {
     });
 
     describe('createReport', () => {
+        const messageId = '123e4567-e89b-12d3-a456-426614174000';
+        const conversationId = '123e4567-e89b-12d3-a456-426614174001';
+        const senderId = '123e4567-e89b-12d3-a456-426614174002';
+        const text = 'Spam content';
+        const status = 'unsolved';
+
         it('should create a report, update message status, and send to RabbitMQ on success', async() => {
-            const messageId = '123e4567-e89b-12d3-a456-426614174000';
-            const conversationId = '123e4567-e89b-12d3-a456-426614174001';
-            const senderId = '123e4567-e89b-12d3-a456-426614174002';
-            const text = 'Spam content';
-            const status = 'unsolved';
-
-            const mockClient = {
-                query: jest.fn().mockResolvedValue({rowCount: 1}),
-                release: jest.fn(),
-            };
-
-            (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+            (reportRepository.checkMessageExists as jest.Mock).mockResolvedValue(true);
+            (reportRepository.checkUserExists as jest.Mock).mockResolvedValue(true);
+            (reportRepository.checkConversationExists as jest.Mock).mockResolvedValue(true);
+            (reportRepository.createReportTransaction as jest.Mock).mockResolvedValue(undefined);
 
             await createReport(messageId, conversationId, senderId, text, status);
 
-            expect(pool.connect).toHaveBeenCalledTimes(1);
-
-            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-
-            expect(mockClient.query).toHaveBeenCalledWith(
-                expect.stringContaining('INSERT INTO reports'),
-                expect.any(Array)
+            expect(reportRepository.createReportTransaction).toHaveBeenCalledTimes(1);
+            expect(reportRepository.createReportTransaction).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    messageId,
+                    conversationId,
+                    senderId,
+                    text,
+                    status
+                })
             );
-
-            expect(mockClient.query).toHaveBeenCalledWith(
-                expect.stringContaining('UPDATE messages SET status'),
-                expect.any(Array)
-            );
-
-            expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
 
             expect(sendToQueue).toHaveBeenCalledWith(
                 'report_queue', 
@@ -61,59 +49,36 @@ describe('Report Service', () => {
                     timestamp: expect.any(Number)
                 })
             );
-            
-            expect(mockClient.release).toHaveBeenCalledTimes(1);
         });
 
-        it('should rollback transaction and release client if a database error occurs', async() => {
-            const messageId = '123e4567-e89b-12d3-a456-426614174000';
-            const conversationId = '123e4567-e89b-12d3-a456-426614174001';
-            const senderId = '123e4567-e89b-12d3-a456-426614174002';
-            
-            const mockClient = {
-                query: jest.fn().mockImplementation(async(queryText: string) => {
-                    if(queryText === 'BEGIN') return {};
-                    if(queryText === 'COMMIT') return {};
-                    throw new Error('Database explosion!');
-                }),
-                release: jest.fn(),
-            };
-            
-            (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+        it('should throw an error if database transaction fails', async() => {
+            (reportRepository.checkMessageExists as jest.Mock).mockResolvedValue(true);
+            (reportRepository.checkUserExists as jest.Mock).mockResolvedValue(true);
+            (reportRepository.checkConversationExists as jest.Mock).mockResolvedValue(true);
+    
+            (reportRepository.createReportTransaction as jest.Mock).mockRejectedValue(new Error('Database explosion!'));
 
             await expect(
                 createReport(messageId, conversationId, senderId, 'Spam', 'unsolved')
             ).rejects.toThrow('Database explosion!');
-
-            expect(pool.connect).toHaveBeenCalledTimes(1);
-
-            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-            expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-
-            expect(mockClient.release).toHaveBeenCalledTimes(1);
 
             expect(sendToQueue).not.toHaveBeenCalled();
         });
     });
 
     describe('takeReportInWork', () => {
-        it('should update report status to "solving" when success', async() => {
-            const reportId = '123e4567-e89b-12d3-a456-426614174099';
+        const reportId = '123e4567-e89b-12d3-a456-426614174099';
 
-            (pool.query as jest.Mock).mockResolvedValue({ rowCount: 1 });
+        it('should update report status to "solving" when success', async() => {
+            (reportRepository.checkReportExists as jest.Mock).mockResolvedValue(true);
 
             await takeReportInWork(reportId);
 
-            expect(pool.query).toHaveBeenCalledWith(
-                expect.stringContaining("UPDATE reports SET status = 'solving'"),
-                [reportId]
-            );
+            expect(reportRepository.updateReportStatus).toHaveBeenCalledWith(reportId);
         });
 
         it('should throw an error when report is not found', async() => {
-            const reportId = '123e4567-e89b-12d3-a456-426614174099';
-
-            (pool.query as jest.Mock).mockResolvedValue({ rowCount: 0 });
+            (reportRepository.checkReportExists as jest.Mock).mockResolvedValue(false);
 
             await expect(
                 takeReportInWork(reportId)
@@ -122,130 +87,42 @@ describe('Report Service', () => {
     });
 
     describe('resolveAndHideMessage', () => {
-        it('should update report and messge status when success', async() => {
-            const reportId = '123e4567-e89b-12d3-a456-426614174099';
-            const messageId = '119e4567-e89b-12d3-a456-426614174050';
+        const reportId = '123e4567-e89b-12d3-a456-426614174099';
 
-            const mockClient = {
-                query: jest.fn().mockResolvedValue({
-                    rowCount: 1,
-                    rows: [{ messageId: messageId }]
-                }),
-                release: jest.fn(),
-            };
-
-            (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+        it('should call resolve transaction when success', async() => {
+            (reportRepository.checkReportExists as jest.Mock).mockResolvedValue(true);
 
             await resolveAndHideMessage(reportId)
 
-            expect(pool.connect).toHaveBeenCalledTimes(1);
-
-            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-
-            expect(mockClient.query).toHaveBeenCalledWith(
-                expect.stringContaining("UPDATE messages SET status = 'hidden'"), 
-                [messageId]
-            );
-
-            expect(mockClient.query).toHaveBeenCalledWith(
-                expect.stringContaining("UPDATE reports SET status = 'solved'"),
-                [reportId]
-            );
-
-            expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-            
-            expect(mockClient.release).toHaveBeenCalledTimes(1);
+            expect(reportRepository.resolveAndHideTransaction).toHaveBeenCalledTimes(1);
+            expect(reportRepository.resolveAndHideTransaction).toHaveBeenCalledWith(reportId);
         });
 
-        it('should rollback transaction and release client if a database error occurs', async() => {
-            const reportId = '123e4567-e89b-12d3-a456-426614174099';
+        it('should throw error if repository fails', async() => {
+            (reportRepository.checkReportExists as jest.Mock).mockResolvedValue(true);
+            (reportRepository.resolveAndHideTransaction as jest.Mock).mockRejectedValue(new Error('Database explosion!'));
             
-            const mockClient = {
-                query: jest.fn().mockImplementation(async(queryText: string) => {
-                    if(queryText === 'BEGIN') return {};
-                    if(queryText === 'COMMIT') return {};
-                    throw new Error('Database explosion!');
-                }),
-                release: jest.fn(),
-            };
-            
-            (pool.connect as jest.Mock).mockResolvedValue(mockClient);
-
-            await expect(
-                resolveAndHideMessage(reportId)
-            ).rejects.toThrow('Database explosion!');
-
-            expect(pool.connect).toHaveBeenCalledTimes(1);
-
-            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-            expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-
-            expect(mockClient.release).toHaveBeenCalledTimes(1);
-
-            expect(sendToQueue).not.toHaveBeenCalled();
+            await expect(resolveAndHideMessage(reportId)).rejects.toThrow('Database explosion!');
         });
     });
 
     describe('rejectReport', () => {
-        it('should update report and messge status when success', async() => {
-            const reportId = '123e4567-e89b-12d3-a456-426614174099';
-            const messageId = '119e4567-e89b-12d3-a456-426614174050';
+        const reportId = '123e4567-e89b-12d3-a456-426614174099';
 
-            const mockClient = {
-                query: jest.fn().mockResolvedValue({
-                    rowCount: 1,
-                    rows: [{ messageId: messageId }]
-                }),
-                release: jest.fn(),
-            };
-
-            (pool.connect as jest.Mock).mockResolvedValue(mockClient);
+        it('should call reject transaction when success', async() => {
+            (reportRepository.checkReportExists as jest.Mock).mockResolvedValue(true);
 
             await rejectReport(reportId);
-
-            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-
-            expect(mockClient.query).toHaveBeenCalledWith(
-                expect.stringContaining("UPDATE messages SET status = 'verified'"),
-                [messageId]
-            );
-
-            expect(mockClient.query).toHaveBeenCalledWith(
-                expect.stringContaining("UPDATE reports SET status = 'solved'"),
-                [reportId]
-            );
-
-            expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-
-            expect(mockClient.release).toHaveBeenCalledTimes(1);
+            
+            expect(reportRepository.rejectReportTransaction).toHaveBeenCalledTimes(1);
+            expect(reportRepository.rejectReportTransaction).toHaveBeenCalledWith(reportId);
         });
 
-        it('should rollback transaction and release client if a database error occurs', async() => {
-            const reportId = '123e4567-e89b-12d3-a456-426614174099';
+        it('should throw error if repository fails', async() => {
+            (reportRepository.checkReportExists as jest.Mock).mockResolvedValue(true);
+            (reportRepository.rejectReportTransaction as jest.Mock).mockRejectedValue(new Error('Database explosion!'));
             
-            const mockClient = {
-                query: jest.fn().mockImplementation(async(queryText: string) => {
-                    if(queryText === 'BEGIN') return {};
-                    if(queryText === 'COMMIT') return {};
-                    throw new Error('Database explosion!');
-                }),
-                release: jest.fn(),
-            };
-            
-            (pool.connect as jest.Mock).mockResolvedValue(mockClient);
-
-            await expect(
-                rejectReport(reportId)
-            ).rejects.toThrow('Database explosion!');
-
-            expect(pool.connect).toHaveBeenCalledTimes(1);
-
-            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-            expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-
-            expect(mockClient.release).toHaveBeenCalledTimes(1);
-
-            expect(sendToQueue).not.toHaveBeenCalled();
+            await expect(rejectReport(reportId)).rejects.toThrow('Database explosion!');
         });
     });
 });
