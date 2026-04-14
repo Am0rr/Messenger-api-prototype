@@ -8,9 +8,10 @@ A robust RESTful API for real-time messaging with an integrated content moderati
 - **Language:** TypeScript
 - **Framework:** Express.js
 - **Database:** PostgreSQL
+- **Validation:** Zod
 - **Containerization:** Docker & Docker Compose
 - **Queue**: RabbitMQ
-- **Testing:** Postman / Jest (In Progress)
+- **Testing:** Postman / Jest 
 
 ---
 
@@ -60,9 +61,12 @@ Messaging & Users
 
 - GET /api/messages/:conversationId — Retrieve message history in certain conversation
 
+- DELETE /api/messages/:messageId - Delete message
+
 Moderation
 
 - POST /api/reports — Report a specific message for review
+  
 - PUT /api/reports/:reportId/take — Take report by administrator
 - PUT /api/reports/:reportId/resolve - Resolve report and hide reported message
 - PUT /api/reports/:reportId/reject - Reject report and make reported message verified
@@ -76,8 +80,11 @@ Component Diagram
 
 ```mermaid
 graph TD
-    Client[Client] --> API(Express API)
-    AdminPanel(Admin Panel) --> API
+
+    subgraph ClientSide
+        Client[Client] 
+        AdminPanel(Admin Panel) 
+    end
 
     subgraph Infrastructure
         DB[(PostgreSQL)]
@@ -85,10 +92,8 @@ graph TD
     end
 
     subgraph NodeBackend [Node.js Backend]
-        API
-
-        Auth(Auth Routes)
-        API -.->|Validates Tokens| Auth
+        API(Express API)
+        Validation(Zod Validation Middleware)
 
         subgraph MainRoutes [Main Business Logic]
             direction TB
@@ -97,7 +102,9 @@ graph TD
             Users(User Routes)
             Reports(Report Routes)
         end
-        API --> MainRoutes
+
+        API --> Validation
+        Validation --> MainRoutes
         
         subgraph Consumers [Workers]
             direction TB
@@ -105,6 +112,9 @@ graph TD
             ReportWorker(Report Consumer)
         end
     end
+
+    Client --> API
+    AdminPanel --> API
 
     Messages -->|Read/Write| DB
     Reports -->|Read/Write| DB
@@ -138,20 +148,26 @@ sequenceDiagram
 
     User->>Client: Report a message
     Client->>API: POST /api/reports {messageId, ...}
-    API->>Service: createReport(...)
     
-    rect rgb(60, 60, 60)
-    Note right of Service: SQL Transaction (BEGIN)
-    Service->>DB: Verify message, user, conversation
-    Service->>DB: INSERT INTO reports
-    Service->>DB: UPDATE messages SET status = 'reported'
-    DB-->>Service: COMMIT (OK)
+    Note over API: Zod Schema Validation
+    alt Data is Invalid
+        API-->>Client: 400 Bad Request (Zod Error)
+    else Data is Valid
+        API->>Service: createReport(...)
+        
+        rect rgb(60, 60, 60)
+        Note right of Service: SQL Transaction (BEGIN)
+        Service->>DB: Verify message, user, conversation
+        Service->>DB: INSERT INTO reports
+        Service->>DB: UPDATE messages SET status = 'reported'
+        DB-->>Service: COMMIT (OK)
+        end
+        
+        Service->>MQ: Publish 'REPORT_CREATED' to report_queue
+        Service-->>API: "Your report was created successfully."
+        API-->>Client: 201 Created {message}
+        Client-->>User: Success UI Notification
     end
-    
-    Service->>MQ: Publish 'REPORT_CREATED' to report_queue
-    Service-->>API: "Your report was created successfully."
-    API-->>Client: 201 Created {message}
-    Client-->>User: Success UI Notification
 
     Admin->>AP: Open unsolved reports
     AP->>API: GET /api/reports?status=unsolved
