@@ -1,80 +1,112 @@
 # Messenger API 🚀
 
+![Node.js](https://img.shields.io/badge/Node.js-v20+-339933?style=flat&logo=nodedotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-v6.0-3178C6?style=flat&logo=typescript)
+![Express](https://img.shields.io/badge/Express.js-v5.0-000000?style=flat&logo=express)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-v8.x-4169E1?style=flat&logo=postgresql)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-v1.x-FF6600?style=flat&logo=rabbitmq)
+![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat&logo=docker)
+
 A robust RESTful API for real-time messaging with an integrated content moderation system. Built as part of a software engineering laboratory project.
 
 ## 🛠 Tech Stack
 
-- **Runtime:** Node.js
-- **Language:** TypeScript
-- **Framework:** Express.js
-- **Database:** PostgreSQL
-- **Validation:** Zod
-- **Containerization:** Docker & Docker Compose
-- **Queue**: RabbitMQ
-- **Testing:** Postman / Jest 
+* **Runtime:** Node.js (v20+)
+* **Language:** TypeScript
+* **Framework:** Express.js (with custom middleware pipeline)
+* **Database:** PostgreSQL (Relational storage)
+* **Data Validation:** Zod (Type-safe schema validation)
+* **Message Broker:** RabbitMQ (Asynchronous background processing)
+* **Containerization:** Docker & Docker Compose
+* **Testing:** Jest (Unit/Integration) & Postman (API Lifecycle)
+
+## 📡 API Endpoints
+
+### Messaging & Users
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/api/users` | Register a new user account |
+| `POST` | `/api/conversations` | Create a new chat session (direct or group) |
+| `POST` | `/api/messages` | Send a message to a conversation (triggers RabbitMQ event) |
+| `GET` | `/api/messages/:conversationId` | Retrieve historical message log for a specific conversation |
+| `DELETE` | `/api/messages/:messageId` | Soft/hard delete a specific message |
+
+### Content Moderation (Admin / Moderator Only)
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/api/reports` | Report a specific message for violating guidelines |
+| `GET` | `/api/reports` | List all unsolved reports pending review |
+| `PUT` | `/api/reports/:reportId/take` | Claim a report for investigation (marks as 'solving') |
+| `PUT` | `/api/reports/:reportId/resolve` | Confirm violation: resolve report and hide the message |
+| `PUT` | `/api/reports/:reportId/reject` | Dismiss violation: reject report and whitelist the message |
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Prerequisites
+### Prerequisites
 
-Ensure you have [Node.js](https://nodejs.org/), [Docker](https://www.docker.com/) and [RabbitMQ](https://www.rabbitmq.com/) installed on your machine.
+* [Node.js](https://nodejs.org/) (v20 LTS or higher)
+* [Docker](https://www.docker.com/) & Docker Compose
+* Git
 
-### 2. Install Dependencies
+### 1. Clone & Install Dependencies
 
-```
+```bash
+git clone [https://github.com/your-username/messenger-api.git](https://github.com/your-username/messenger-api.git)
+cd messenger-api
 npm install
-```
-
-### 3. Environment Setup
-
-Create a .env file in the root directory based on .env.example and configure your local credentials.
-
-### 4. Infrastructure (Docker)
-
-Spin up the infrastructure (PostgreSQL & RabbitMQ):
 
 ```
+
+### 2. Environment Setup
+
+Create a `.env` file in the root directory based on `.env.example`:
+```env
+PORT=3000
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=MessengerDb
+RABBITMQ_URL=amqp://guest:guest@localhost:5672
+```
+
+### 3. Spin Up Infrastructure
+
+Launch the containerized PostgreSQL database and RabbitMQ broker using Docker Compose:
+
+```bash
 docker compose up -d
 ```
 
-### 5. Run the Server
+> ⏳ *Please allow 5–10 seconds for RabbitMQ to fully initialize its internal exchanges and queues before booting up the server.*
 
-The database schema will be initialized automatically on startup:
+### 4. Run the Application
 
+The system automatically applies schema initializations and triggers required database connections on startup:
+
+```bash
+# Run in development mode with hot-reload (Nodemon + ts-node)
+npm run dev
+
+# Build the project (TypeScript compilation)
+npm run build
+
+# Run the compiled production build
+npm start
 ```
-npx tsx backend/src/main.ts
-```
 
-The API will be available at: http://localhost:3000
+The API will safely accept requests at: `http://localhost:3000`
 
 ---
 
-## 📡 API Endpoints
-
-Messaging & Users
-
-- POST /api/users — Register a new user
-- POST /api/conversations — Create a new chat session
-- POST /api/messages — Send a message
-
-- GET /api/messages/:conversationId — Retrieve message history in certain conversation
-
-- DELETE /api/messages/:messageId - Delete message
-
-Moderation
-
-- POST /api/reports — Report a specific message for review
-  
-- PUT /api/reports/:reportId/take — Take report by administrator
-- PUT /api/reports/:reportId/resolve - Resolve report and hide reported message
-- PUT /api/reports/:reportId/reject - Reject report and make reported message verified
-
-- GET /api/reports - List all unsolved reports
----
 
 ## 🏗 System Architecture
+
+The system utilizes an asynchronous event-driven approach. Heavy tasks like status updates and notification processing are offloaded to background consumers via **RabbitMQ** to keep the API layer highly responsive.
 
 Component Diagram
 
@@ -223,4 +255,13 @@ stateDiagram-v2
     
     hidden --> [*]
     verified --> [*]
+```
+
+## 🧪 Testing
+
+Automated testing checks both HTTP routes and contract validations.
+
+```bash
+# Run unit and integration tests via Jest
+npm run test
 ```
